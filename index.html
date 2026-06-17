@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>catchmeifyoucan</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            background-color: #1a1a2e;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            text-align: center;
+        }
+
+
+        #settings-icon { --
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: #aaa;
+            transition: color 0.2s;
+            z-index: 10;
+        }
+
+        #settings-icon:hover {
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #runaway-btn {
+            position: absolute;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.5);
+            transition: left 0.1s ease, top 0.1s ease;
+            z-index: 5;
+        }
+
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(26, 26, 46, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .modal.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background-color: #16213e;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #0f3460;
+            max-width: 400px;
+            width: 80%;
+        }
+
+        .tip {
+            color: #e94560;
+            font-style: italic;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .close-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #0f3460;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            background-color: #1a4b8c;
+        }
+
+     
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #e94560;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+
+    <button id="settings-icon">⚙️ Settings</button>
+    <h1 id="message">I dare you to click the button.</h1>
+    <button id="runaway-btn">Catch Me!</button>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            <p>
+                Speedrun Mode 
+                <label class="switch">
+                    <input type="checkbox" id="speedrun-toggle">
+                    <span class="slider"></span>
+                </label>
+            </p>
+            <button class="close-btn" id="close-settings">Close</button>
+        </div>
+    </div>
+
+    <div id="victory-screen" class="modal">
+        <div class="modal-content">
+            <h2 id="victory-title">YOU CAUGHT IT!</h2>
+            <p id="victory-subtitle">Unbelievable reflexes.</p>
+            <p class="tip" id="victory-tip">Tip: Enable "Speedrun Mode" in settings to track your time!</p>
+            <button class="close-btn" id="close-victory">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        
+        const button = document.getElementById('runaway-btn');
+        const settingsIcon = document.getElementById('settings-icon');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettings = document.getElementById('close-settings');
+        const speedrunToggle = document.getElementById('speedrun-toggle');
+         
+        const victoryScreen = document.getElementById('victory-screen');
+        const victoryTitle = document.getElementById('victory-title');
+        const victorySubtitle = document.getElementById('victory-subtitle');
+        const closeVictory = document.getElementById('close-victory');
+        const victoryTip = document.getElementById('victory-tip');
+
+       
+        let isSpeedrun = false;
+        let startTime = 0;
+        let timeTaken = 0;
+        let gameActive = true;
+
+       
+        let personalBest = parseFloat(localStorage.getItem('runaway_pb')) || Infinity;
+
+       
+        function resetGame() {
+            button.style.left = (window.innerWidth / 2 - button.offsetWidth / 2) + 'px';
+            button.style.top = (window.innerHeight / 2 - button.offsetHeight / 2 + 50) + 'px';
+            gameActive = true;
+            if (isSpeedrun) {
+                startTime = performance.now();
+            }
+        }
+
+        window.onload = resetGame;
+
+       
+        settingsIcon.addEventListener('click', () => { settingsModal.classList.add('visible'); });
+        closeSettings.addEventListener('click', () => {
+            settingsModal.classList.remove('visible');
+            isSpeedrun = speedrunToggle.checked;
+            resetGame();
+        });
+
+      
+        button.addEventListener('mouseover', () => {
+            if (!gameActive) return;
+            const maxX = window.innerWidth - button.offsetWidth;
+            const maxY = window.innerHeight - button.offsetHeight;
+            button.style.left = Math.floor(Math.random() * maxX) + 'px';
+            button.style.top = Math.floor(Math.random() * maxY) + 'px';
+        });
+
+      
+        button.addEventListener('click', () => {
+            if (!gameActive) return;
+            gameActive = false; 
+
+            if (isSpeedrun) {
+
+                timeTaken = parseFloat(((performance.now() - startTime) / 1000).toFixed(2));
+                
+
+                if (timeTaken < personalBest) {
+                    personalBest = timeTaken;
+                    localStorage.setItem('runaway_pb', personalBest); 
+                    
+                    
+                    victoryTitle.innerText = "NEW PERSONAL BEST";
+                    victorySubtitle.innerText = `Your Time: ${timeTaken}s`;
+                    closeVictory.innerText = "play again?";
+                } else {
+
+                    victoryTitle.innerText = "YOU CAUGHT IT!";
+                    victorySubtitle.innerText = `Your Time: ${timeTaken}s (PB: ${personalBest}s)`;
+                    closeVictory.innerText = "Play Again";
+                }
+
+                victoryTip.innerText = "Tip: Enable \"Speedrun Mode\" in settings to track your time!";
+                victoryScreen.classList.add('visible');
+
+            } else {
+                victoryTitle.innerText = "YOU CAUGHT IT!";
+                victorySubtitle.innerText = "Unbelievable reflexes.";
+                victoryTip.innerText = "Tip: Enable \"Speedrun Mode\" in settings to track your time!";
+                closeVictory.innerText = "Play Again";
+                victoryScreen.classList.add('visible');
+            }
+        });
+
+        closeVictory.addEventListener('click', () => {
+            victoryScreen.classList.remove('visible');
+            resetGame();
+        });
+    </script>
+</body>
+</html>
